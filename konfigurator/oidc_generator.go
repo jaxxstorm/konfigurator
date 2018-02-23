@@ -32,8 +32,8 @@ type OidcGenerator struct {
 func httpClient() (*http.Client, error) {
 	tlsConfig := &tls.Config{}
 	err := rootcerts.ConfigureTLS(tlsConfig, &rootcerts.Config{
-		CAFile: os.Getenv("MYAPP_CAFILE"),
-		CAPath: os.Getenv("MYAPP_CAPATH"),
+	//CAFile: os.Getenv("MYAPP_CAFILE"),
+	//CAPath: os.Getenv("MYAPP_CAPATH"),
 	})
 	if err != nil {
 		return nil, err
