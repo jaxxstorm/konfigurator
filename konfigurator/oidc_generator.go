@@ -2,9 +2,11 @@ package konfigurator
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"net/url"
 	"os"
 
@@ -12,6 +14,9 @@ import (
 
 	oidc "github.com/coreos/go-oidc"
 	"golang.org/x/oauth2"
+
+	"github.com/hashicorp/go-cleanhttp"
+	"github.com/hashicorp/go-rootcerts"
 )
 
 // OidcGenerator deals with OIDC information such as the redirect endpoint and all the Oauth2 config.
@@ -24,10 +29,35 @@ type OidcGenerator struct {
 	Stream                io.Writer
 }
 
+func httpClient() (*http.Client, error) {
+	tlsConfig := &tls.Config{}
+	err := rootcerts.ConfigureTLS(tlsConfig, &rootcerts.Config{
+		CAFile: os.Getenv("MYAPP_CAFILE"),
+		CAPath: os.Getenv("MYAPP_CAPATH"),
+	})
+	if err != nil {
+		return nil, err
+	}
+	c := cleanhttp.DefaultClient()
+	t := cleanhttp.DefaultTransport()
+	t.TLSClientConfig = tlsConfig
+	c.Transport = t
+	return c, nil
+}
+
 // NewOidcGenerator uses a default background context and 'localhost' for the redirectUrl and returns a new OidcGenerator struct.
 func NewOidcGenerator(hostURL, clientID, localPort, localRedirectEndpoint string) (*OidcGenerator, error) {
 	ctx := context.Background()
-	provider, err := oidc.NewProvider(ctx, hostURL)
+
+	client, err := httpClient()
+
+	if err != nil {
+		return nil, err
+	}
+
+	httpctx := context.WithValue(ctx, oauth2.HTTPClient, client)
+
+	provider, err := oidc.NewProvider(httpctx, hostURL)
 	if err != nil {
 		return nil, err
 	}
